@@ -1,1 +1,21 @@
 .vscode/
+
+# ROS 2 / colcon generated artifacts
+**/build/
+**/install/
+**/log/
+
+# Test and lint artifacts
+**/test/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.tox/
+.coverage
+coverage.xml
+*.pyc
+
+# Optional local lint/test config files
+.flake8
+pytest.ini
+tox.ini
