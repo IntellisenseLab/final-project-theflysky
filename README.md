@@ -66,7 +66,7 @@ qbot_ws/
 1. Clone the repository and enter the workspace:
 
 ```bash
-git clone <your-repo-link>
+git clone https://github.com/IntellisenseLab/final-project-flysky.git
 cd final-project-flysky/qbot_ws
 ```
 
