@@ -67,20 +67,45 @@ qbot_ws/
 
 ```bash
 git clone https://github.com/IntellisenseLab/final-project-flysky.git
-cd final-project-flysky/qbot_ws
+cd final-project-flysky
 ```
 
-2. Build and source:
+2. Install system and ROS dependencies (Ubuntu/ROS Jazzy):
 
 ```bash
+# Review and run commands from requirements.txt
+# (contains apt and ROS tooling commands only)
+```
+
+3. Create a Python virtual environment and install Python packages:
+
+```bash
+python3 -m venv .venv
+./.venv/bin/pip install -r requirements-venv.txt
+```
+
+4. Build and source the ROS 2 workspace:
+
+```bash
+cd qbot_ws
 colcon build
 source install/setup.bash
 ```
 
-3. Launch the integrated system:
+5. Launch the integrated system:
 
 ```bash
 ros2 launch qbot_bringup system.launch.py
+```
+
+### Running Python scripts in this repo
+
+Use the project virtual environment so Python dependencies stay isolated:
+
+```bash
+source .venv/bin/activate
+python "Component testing/hand_gestures.py"
+deactivate
 ```
 
 ## Features
