@@ -1,0 +1,11 @@
+Use this from now on in this project:
+
+Activate venv
+source .venv/bin/activate
+
+Run your script
+python [].py
+
+When done
+deactivate
+

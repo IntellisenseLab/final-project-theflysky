@@ -26,14 +26,13 @@ v4l2-ctl --list-devices
 ls /dev/video*
 
 #OpenCV
-sudo apt install -y python3-opencv libopencv-dev python3-numpy
+sudo apt install -y libopencv-dev
 
-#Hand gesture recognition libraries
-pip3 install --break-system-packages mediapipe
-
-#owner recognition (face-recognition is PyPI only; cmake + build tools needed for dlib)
+#owner recognition build tools
 sudo apt install -y cmake build-essential libboost-all-dev
-pip3 install --break-system-packages dlib face-recognition imutils
+
+#Python packages are managed in the project virtual environment
+#Install with: ./.venv/bin/pip install -r requirements-venv.txt
 
 #ROS packages
 cd qbot_ws/src
