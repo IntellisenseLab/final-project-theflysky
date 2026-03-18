@@ -149,3 +149,5 @@ This project is intended for academic and research use.
 - ROS 2 installation guide: https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html
 - OpenCV documentation: https://docs.opencv.org/
 - MediaPipe documentation: https://ai.google.dev/edge/mediapipe
+- Gesture idetifying models: https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer/
+
