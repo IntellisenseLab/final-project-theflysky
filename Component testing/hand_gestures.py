@@ -1,8 +1,8 @@
 import cv2
 import time
+import math
 import collections
 import mediapipe as mp
-from mediapipe.tasks.python.components.processors.classifier_options import ClassifierOptions
 
 # ===== MediaPipe Tasks imports =====
 BaseOptions = mp.tasks.BaseOptions
@@ -11,14 +11,14 @@ VisionRunningMode = mp.tasks.vision.RunningMode
 HandLandmarker = mp.tasks.vision.HandLandmarker
 HandLandmarkerOptions = mp.tasks.vision.HandLandmarkerOptions
 
-GestureRecognizer = mp.tasks.vision.GestureRecognizer
-GestureRecognizerOptions = mp.tasks.vision.GestureRecognizerOptions
-
 HAND_MODEL_PATH = "/home/nadeesha/final-project-flysky/models/hand_landmarker.task"
-GESTURE_MODEL_PATH = "/home/nadeesha/final-project-flysky/models/gesture_recognizer.task"
 
 TIP_IDS = [4, 8, 12, 16, 20]
 PIP_IDS = [3, 6, 10, 14, 18]
+
+# Thumb extension tuning (for flicker control)
+THUMB_STRAIGHT_ANGLE_DEG = 150.0
+THUMB_WRIST_EXTENSION_MARGIN = 0.04
 
 
 def fingers_up(landmarks, handedness_name):
@@ -29,13 +29,44 @@ def fingers_up(landmarks, handedness_name):
     """
     fingers = []
 
-    thumb_tip_x = landmarks[TIP_IDS[0]].x
-    thumb_pip_x = landmarks[PIP_IDS[0]].x
+    # Thumb state from hand geometry (orientation-independent):
+    # 1) thumb is relatively straight at IP joint
+    # 2) tip is farther from wrist than IP joint
+    thumb_mcp = landmarks[2]
+    thumb_ip = landmarks[3]
+    thumb_tip = landmarks[4]
+    wrist = landmarks[0]
 
-    if handedness_name == "Right":
-        fingers.append(1 if thumb_tip_x < thumb_pip_x else 0)
-    else:
-        fingers.append(1 if thumb_tip_x > thumb_pip_x else 0)
+    v1x = thumb_mcp.x - thumb_ip.x
+    v1y = thumb_mcp.y - thumb_ip.y
+    v1z = thumb_mcp.z - thumb_ip.z
+    v2x = thumb_tip.x - thumb_ip.x
+    v2y = thumb_tip.y - thumb_ip.y
+    v2z = thumb_tip.z - thumb_ip.z
+
+    n1 = math.sqrt(v1x * v1x + v1y * v1y + v1z * v1z)
+    n2 = math.sqrt(v2x * v2x + v2y * v2y + v2z * v2z)
+
+    thumb_straight = False
+    if n1 > 1e-6 and n2 > 1e-6:
+        cosang = (v1x * v2x + v1y * v2y + v1z * v2z) / (n1 * n2)
+        cosang = max(-1.0, min(1.0, cosang))
+        angle_deg = math.degrees(math.acos(cosang))
+        thumb_straight = angle_deg > THUMB_STRAIGHT_ANGLE_DEG
+
+    d_tip_wrist = math.sqrt(
+        (thumb_tip.x - wrist.x) ** 2 +
+        (thumb_tip.y - wrist.y) ** 2 +
+        (thumb_tip.z - wrist.z) ** 2
+    )
+    d_ip_wrist = math.sqrt(
+        (thumb_ip.x - wrist.x) ** 2 +
+        (thumb_ip.y - wrist.y) ** 2 +
+        (thumb_ip.z - wrist.z) ** 2
+    )
+    thumb_extended = d_tip_wrist > (d_ip_wrist + THUMB_WRIST_EXTENSION_MARGIN)
+
+    fingers.append(1 if (thumb_straight and thumb_extended) else 0)
 
     for i in range(1, 5):
         tip_y = landmarks[TIP_IDS[i]].y
@@ -98,15 +129,48 @@ def draw_finger_mask(frame, landmarks):
     return overlay
 
 
-def get_best_gesture(gesture_result):
-    if not gesture_result.gestures or len(gesture_result.gestures) == 0:
-        return "No Hand", 0.0
+def classify_gesture_from_fingers(fingers):
+    """
+    Heuristic gesture labels from [thumb, index, middle, ring, pinky].
+    This keeps gesture labeling fully based on hand_landmarker landmarks.
+    """
+    patterns = {
+        (0, 0, 0, 0, 0): "FIST",
+        (1, 1, 1, 1, 1): "OPEN PALM",
+        (0, 1, 0, 0, 0): "POINTING",
+        (1, 0, 0, 0, 0): "THUMBS UP",
+        (0, 1, 1, 0, 0): "PEACE",
+        (1, 1, 0, 0, 1): "I LOVE YOU",
+    }
+    return patterns.get(tuple(fingers), "CUSTOM")
 
-    if len(gesture_result.gestures[0]) == 0:
-        return "No Gesture", 0.0
 
-    top = gesture_result.gestures[0][0]
-    return top.category_name, top.score
+def get_index_direction(landmarks):
+    """
+    Estimate index-finger pointing direction using MCP->TIP vector.
+    Returns one of: N, NE, E, SE, S, SW, W, NW, TOWARDS CAMERA
+    """
+    index_mcp = landmarks[5]
+    index_tip = landmarks[8]
+
+    dx = index_tip.x - index_mcp.x
+    dy = index_tip.y - index_mcp.y
+    dz = index_mcp.z - index_tip.z  # Positive if tip is closer to camera.
+
+    xy_len = math.hypot(dx, dy)
+
+    # If finger projection is short in image plane but depth difference is strong,
+    # treat as pointing toward the camera.
+    if dz > 0.12 and xy_len < 0.10:
+        return "TOWARDS CAMERA"
+
+    angle = math.degrees(math.atan2(-dy, dx))
+    if angle < 0:
+        angle += 360
+
+    directions = ["E", "NE", "N", "NW", "W", "SW", "S", "SE"]
+    idx = int((angle + 22.5) // 45) % 8
+    return directions[idx]
 
 
 def main():
@@ -127,21 +191,7 @@ def main():
         min_tracking_confidence=0.7
     )
 
-    gesture_options = GestureRecognizerOptions(
-        base_options=BaseOptions(model_asset_path=GESTURE_MODEL_PATH),
-        running_mode=VisionRunningMode.VIDEO,
-        num_hands=1,
-        min_hand_detection_confidence=0.7,
-        min_hand_presence_confidence=0.7,
-        min_tracking_confidence=0.7,
-        canned_gesture_classifier_options=ClassifierOptions(
-            score_threshold=0.6,
-            max_results=1
-        )
-    )
-
-    with HandLandmarker.create_from_options(hand_options) as hand_landmarker, \
-         GestureRecognizer.create_from_options(gesture_options) as gesture_recognizer:
+    with HandLandmarker.create_from_options(hand_options) as hand_landmarker:
 
         while True:
             ret, frame = cap.read()
@@ -157,15 +207,11 @@ def main():
 
             timestamp_ms = int(time.time() * 1000)
 
-            # 1. Use Hand Landmarker for landmarks/fingers/masking
             hand_result = hand_landmarker.detect_for_video(mp_image, timestamp_ms)
 
-            # 2. Use Gesture Recognizer only for gesture label
-            gesture_result = gesture_recognizer.recognize_for_video(mp_image, timestamp_ms)
-
             gesture_text = "No Hand"
-            gesture_score = 0.0
             handedness_name = "Unknown"
+            index_direction_text = "-"
 
             if hand_result.hand_landmarks and len(hand_result.hand_landmarks) > 0:
                 landmarks = hand_result.hand_landmarks[0]
@@ -175,21 +221,11 @@ def main():
 
                 fingers = fingers_up(landmarks, handedness_name)
 
-                raw_gesture_text, gesture_score = get_best_gesture(gesture_result)
+                # Direction detection is shown only when index finger is the sole finger up.
+                if fingers == [0, 1, 0, 0, 0]:
+                    index_direction_text = get_index_direction(landmarks)
 
-                display_map = {
-                    "Closed_Fist": "FIST",
-                    "Open_Palm": "OPEN PALM",
-                    "Pointing_Up": "POINTING",
-                    "Thumb_Up": "THUMBS UP",
-                    "Thumb_Down": "THUMBS DOWN",
-                    "Victory": "PEACE",
-                    "ILoveYou": "I LOVE YOU",
-                    "None": "NO GESTURE",
-                    "Unknown": "UNKNOWN"
-                }
-
-                gesture_history.append(display_map.get(raw_gesture_text, raw_gesture_text))
+                gesture_history.append(classify_gesture_from_fingers(fingers))
                 gesture_text = max(set(gesture_history), key=gesture_history.count)
 
                 frame = draw_finger_mask(frame, landmarks)
@@ -217,11 +253,11 @@ def main():
 
                 cv2.putText(
                     frame,
-                    f"Score: {gesture_score:.2f}",
+                    f"Index Dir: {index_direction_text}",
                     (10, 105),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.8,
-                    (0, 200, 255),
+                    (255, 255, 255),
                     2
                 )
             else:
@@ -237,7 +273,7 @@ def main():
                 2
             )
 
-            cv2.imshow("Hand Landmarker + Gesture Recognizer", frame)
+            cv2.imshow("Hand Landmarker Only", frame)
 
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
