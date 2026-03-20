@@ -1,8 +1,138 @@
-import cv2
+import os
+import sys
+import shutil
 import time
 import math
 import collections
+
+# Reduce non-critical native library logs.
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+os.environ.setdefault("GLOG_minloglevel", "3")
+os.environ.setdefault("ABSL_MIN_LOG_LEVEL", "2")
+os.environ.setdefault("OPENCV_LOG_LEVEL", "ERROR")
+os.environ.setdefault("QT_LOGGING_RULES", "qt.qpa.*=false")
+
+# Point Qt to system fonts to avoid OpenCV Qt font warnings.
+for font_dir in (
+    "/usr/share/fonts/truetype/dejavu",
+    "/usr/share/fonts/dejavu",
+    "/usr/share/fonts/truetype/freefont",
+):
+    if os.path.isdir(font_dir):
+        os.environ.setdefault("QT_QPA_FONTDIR", font_dir)
+        break
+
+
+def _prepare_cv2_qt_fonts_preimport():
+    py_ver = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    cv2_font_dir = os.path.join(
+        sys.prefix,
+        "lib",
+        py_ver,
+        "site-packages",
+        "cv2",
+        "qt",
+        "fonts",
+    )
+
+    os.makedirs(cv2_font_dir, exist_ok=True)
+
+    for src in (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+    ):
+        if os.path.isfile(src):
+            dst = os.path.join(cv2_font_dir, os.path.basename(src))
+            if not os.path.isfile(dst):
+                shutil.copy2(src, dst)
+
+
+_prepare_cv2_qt_fonts_preimport()
+
+import cv2
 import mediapipe as mp
+
+
+class _FilteredStderr:
+    def __init__(self, stream, blocked_substrings):
+        self._stream = stream
+        self._blocked = blocked_substrings
+        self._buf = ""
+
+    def write(self, data):
+        self._buf += data
+        while "\n" in self._buf:
+            line, self._buf = self._buf.split("\n", 1)
+            if not any(token in line for token in self._blocked):
+                self._stream.write(line + "\n")
+
+    def flush(self):
+        if self._buf and not any(token in self._buf for token in self._blocked):
+            self._stream.write(self._buf)
+        self._buf = ""
+        self._stream.flush()
+
+    def isatty(self):
+        return self._stream.isatty() if hasattr(self._stream, "isatty") else False
+
+
+class _NativeStderrSilencer:
+    def __enter__(self):
+        self._saved_stdout_fd = os.dup(1)
+        self._saved_stderr_fd = os.dup(2)
+        self._devnull_fd = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(self._devnull_fd, 1)
+        os.dup2(self._devnull_fd, 2)
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        os.dup2(self._saved_stdout_fd, 1)
+        os.dup2(self._saved_stderr_fd, 2)
+        os.close(self._saved_stdout_fd)
+        os.close(self._saved_stderr_fd)
+        os.close(self._devnull_fd)
+
+
+def _ensure_cv2_qt_fonts():
+    cv2_font_dir = os.path.join(os.path.dirname(cv2.__file__), "qt", "fonts")
+    os.makedirs(cv2_font_dir, exist_ok=True)
+
+    candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+    ]
+
+    copied_any = False
+    for src in candidates:
+        if os.path.isfile(src):
+            dst = os.path.join(cv2_font_dir, os.path.basename(src))
+            if not os.path.isfile(dst):
+                shutil.copy2(src, dst)
+            copied_any = True
+
+    if copied_any:
+        os.environ["QT_QPA_FONTDIR"] = cv2_font_dir
+
+
+_ensure_cv2_qt_fonts()
+sys.stderr = _FilteredStderr(
+    sys.stderr,
+    (
+        "Feedback manager requires a model with a single signature inference",
+        "Using NORM_RECT without IMAGE_DIMENSIONS",
+        "QFontDatabase: Cannot find font directory",
+        "Note that Qt no longer ships fonts",
+        "All log messages before absl::InitializeLog() is called are written to STDERR",
+    ),
+)
+
+try:
+    from absl import logging as absl_logging
+    absl_logging.set_verbosity(absl_logging.ERROR)
+except Exception:
+    pass
 
 # ===== MediaPipe Tasks imports =====
 BaseOptions = mp.tasks.BaseOptions
@@ -191,7 +321,10 @@ def main():
         min_tracking_confidence=0.7
     )
 
-    with HandLandmarker.create_from_options(hand_options) as hand_landmarker:
+    with _NativeStderrSilencer():
+        hand_landmarker_context = HandLandmarker.create_from_options(hand_options)
+
+    with hand_landmarker_context as hand_landmarker:
 
         while True:
             ret, frame = cap.read()
@@ -207,7 +340,8 @@ def main():
 
             timestamp_ms = int(time.time() * 1000)
 
-            hand_result = hand_landmarker.detect_for_video(mp_image, timestamp_ms)
+            with _NativeStderrSilencer():
+                hand_result = hand_landmarker.detect_for_video(mp_image, timestamp_ms)
 
             gesture_text = "No Hand"
             handedness_name = "Unknown"
@@ -228,7 +362,6 @@ def main():
                 gesture_history.append(classify_gesture_from_fingers(fingers))
                 gesture_text = max(set(gesture_history), key=gesture_history.count)
 
-                frame = draw_finger_mask(frame, landmarks)
                 draw_landmarks_and_connections(frame, landmarks)
 
                 cv2.putText(
