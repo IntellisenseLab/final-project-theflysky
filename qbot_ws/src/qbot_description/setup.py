@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 from glob import glob
 import os
 
-package_name = 'qbot_bringup'
+package_name = 'qbot_description'
 
 setup(
     name=package_name,
@@ -21,21 +21,16 @@ setup(
             os.path.join('share', package_name, 'launch'),
             glob('launch/*.launch.py')
         ),
+        (
+            os.path.join('share', package_name, 'sdf'),
+            glob('sdf/*')
+        ),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='nadeesha',
-    maintainer_email='nadeeshajayamanne@protonmail.com',
-    description='QBot bringup package',
+    maintainer='ishan',
+    maintainer_email='ishan@example.com',
+    description='QBot description and simulation assets',
     license='TODO: License declaration',
-    extras_require={
-        'test': [
-            'pytest',
-        ],
-    },
-    entry_points={
-        'console_scripts': [
-            'motion_test_node = qbot_bringup.motion_test_node:main',
-        ],
-    },
+    entry_points={},
 )
