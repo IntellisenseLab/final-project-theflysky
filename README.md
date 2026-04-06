@@ -55,6 +55,7 @@ qbot_ws/
 │   ├── vision_node/
 │   ├── gesture_node/
 │   ├── behavior_node/
+│   ├── kinect_camera/
 │   └── qbot_bringup/
 ├── build/
 ├── install/
@@ -151,3 +152,10 @@ This project is intended for academic and research use.
 - MediaPipe documentation: https://ai.google.dev/edge/mediapipe
 - Gesture idetifying models: https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer/
 
+
+## Kinect 360 Support
+
+A ROS 2 Kinect v1 / Xbox 360 publisher now lives in `qbot_ws/src/kinect_camera`.
+It publishes `/kinect/rgb/image_raw` and `/kinect/depth/image_raw` using `libfreenect` and is designed for Ubuntu 24.04 + ROS 2 Jazzy without relying on the fragile legacy Python wrapper.
+
+See `KINECT_360_SETUP.md` for the full step-by-step install, debugging, run, and viewer guide. See `qbot_ws/src/kinect_camera/README.md` for the package-local summary.
