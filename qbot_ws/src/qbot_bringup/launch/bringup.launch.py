@@ -2,23 +2,21 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import ExecuteProcess, SetEnvironmentVariable, TimerAction
+from launch.actions import IncludeLaunchDescription, TimerAction
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    pkg_share = get_package_share_directory('qbot_description')
-    world_path = os.path.join(pkg_share, 'sdf', 'qbot_world.sdf')
-    sdf_path = os.path.join(pkg_share, 'sdf')
-
-    gazebo_resource_path = SetEnvironmentVariable(
-        name='IGN_GAZEBO_RESOURCE_PATH',
-        value=sdf_path
+    qbot_description_share = get_package_share_directory('qbot_description')
+    simulation_launch_path = os.path.join(
+        qbot_description_share,
+        'launch',
+        'simulation.launch.py'
     )
 
-    gazebo = ExecuteProcess(
-        cmd=['ign', 'gazebo', world_path, '-r'],
-        output='screen'
+    simulation = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(simulation_launch_path)
     )
 
     bridge = Node(
@@ -38,8 +36,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        gazebo_resource_path,
-        gazebo,
+        simulation,
         bridge,
-        TimerAction(period=2.0, actions=[motion_test]),
+        TimerAction(period=10.0, actions=[motion_test]),
     ])

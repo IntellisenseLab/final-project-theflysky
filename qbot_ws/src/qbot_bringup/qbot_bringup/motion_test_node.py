@@ -7,7 +7,7 @@ class MotionTestNode(Node):
     def __init__(self):
         super().__init__('motion_test_node')
 
-        self.publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.publisher_ = self.create_publisher(Twist, '/model/qbot/cmd_vel', 10)
         self.timer = self.create_timer(0.1, self.timer_callback)
 
         self.start_time = self.get_clock().now()
