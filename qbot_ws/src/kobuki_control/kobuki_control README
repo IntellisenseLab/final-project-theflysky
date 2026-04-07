@@ -1,0 +1,32 @@
+kobuki_control########
+
+
+Build, Setup & Run:
+
+cd ~/final-project-flysky/qbot_ws
+colcon build --packages-select kobuki_control --symlink-install
+source install/setup.bash
+ros2 run kobuki_control kobuki_control_node
+
+
+
+
+
+Publish commands (in a seperate terminal):
+
+**Source the workspace**
+
+Forward:
+ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.2}, angular: {z: 0.0}}"
+
+Turn:
+ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.0}, angular: {z: 0.5}}"
+
+Curve:
+ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.2}, angular: {z: 0.5}}"
+
+Stop:
+ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.0}, angular: {z: 0.0}}"
+
+
+OBSERVE OUTPUT MESSAGES PRINTED ON Kobuki_control running terminal
