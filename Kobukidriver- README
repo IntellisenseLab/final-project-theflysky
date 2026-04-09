@@ -1,6 +1,12 @@
 KOBUKI DRIVER NOTES
 ===================
 
+
+0. INSTALL 
+------------
+pip install kobukidriver
+
+
 1. OVERVIEW
 -----------
 - Installed via pip
@@ -9,150 +15,70 @@ KOBUKI DRIVER NOTES
 - Requires real hardware (fails if not connected)
 
 
-2. INITIALIZATION
+2. INITIALIZATION & USAGE
 ----------------
-#import the kobuki class
 from kobukidriver import Kobuki
-#create the instance for the kobuki
-kobuki_instance=Kobuki()#raise error if kobuki is not connected
+kobuki_instance=Kobuki()  #raise error if kobuki is not connected
 
+#Don't change the start function name
+def start():
+    while(1):
+        #your kobuki logic
+kobuki_instance.kobukistart(start)
+
+*******
 - Scans serial ports
 - Attempts connection
 - Throws "Kobuki is not connected" if not found
 
 
-2.1 USAGE 
-
-def start():
-    while(1):
-        #your kbuki logic here
-kobuki_instance.kobukistart(start)
-
-**Don't change the start function name
-
-from kobukidriver import Kobuki
-import time as t
-kobuki_instance=Kobuki()
-
-while(1):
-    t.sleep(0.2)#delay for fetching data
-    basic_sensor_data=kobuki_instance.basic_sensor_data()
-    print(basic_sensor_data)#prints the basic sensor data from the robot
-
-- After initialization, the driver is used through the kobuki_instance object.
-- Example usage shows polling methods like basic_sensor_data() inside loops.
 
 
-3. METHODS
+3. METHODS FOR OUR CONTEXT
 ---------------------
 
-Internal/private methods:
-- _Kobuki__basic_sensor
-- _Kobuki__cliffsensor
-- _Kobuki__current
-- _Kobuki__docking_IR
-- _Kobuki__general_purpose_input
-- _Kobuki__getKobukiPort
-- _Kobuki__gyro
-- _Kobuki__in_buff
-- _Kobuki__inertial_sensor
-- _Kobuki__temp
+3.1 MOTION CONTROL:
 
-These appear to be internal helper methods for serial-port handling and sensor parsing.
-Probably not intended for direct external use.
+3.1.1 move(self, left_velocity, right_velocity, rotate)
 
-Motion/control methods:
-- move
-- base_control
-- kobukistart
+- Lower-level control by sepcifying absolute wheel speeds
+- move() does not directly send motor bytes itself. It converts wheel-style motion into robot-level motion and then uses base_control()
 
-These are likely the main motion-control methods.
-Need to inspect signatures to know exact arguments and usage.
-
-Sensor/state methods:
-- basic_sensor_data
-- cliffsensor_data
-- current_data
-- docking_IR_data
-- general_purpose_input_data
-- gyro_raw_data
-- gyro_velocity_data
-- gyro_intconverted_data
-- inertial_sensor_data
-- read_data
-- kokubihardwareinfo
-
-The driver supports reading robot state and sensor values, not just movement.
-
-Safety/event helper methods:
-- left_bumper
-- center_bumper
-- right_bumper
-- left_wheel_dropped
-- right_wheel_dropped
-- both_wheel_dropped
-- button_0
-- button_1
-- button_2
-
-The driver provides convenient high-level checks for whether bumper has been pressed, has wheel-dropped, and whther specific buttons are pressed.
-
-
-Auxiliary output methods:
-- set_led1_green_colour
-- set_led1_red_colour
-- set_led2_green_colour
-- set_led2_red_colour
-- clr_led1
-- clr_led2
-- play_button_sound
-- play_clean_start_sound
-- play_clean_stop_sound
-- play_custom_sound
-- play_error_sound
-- play_off_sound
-- play_on_sound
-- play_recharge_sound
-- set_digital_output_pin_0
-- set_digital_output_pin_1
-- set_digital_output_pin_2
-- set_digital_output_pin_3
-- power_on_3v3_supply
-
-The driver can control LEDs, sounds, digital outputs, and external power lines.
-
-4. METHOD SIGNATURES
---------------------
-MOTION CONTROL:
-
-move(self, left_velocity, right_velocity, rotate)
-- Likely lower-level control by sepcifying absolute wheel speeds
-
-\
+\\\
 *This is a conversion wrapper functon around base_control(), which converts the given arguments 
 - (rotate = 0 or 1) : Currently seems to have no mensigful logic **Need to look in more
+
 - Computes botspeed  i.e the robots overall translation
     (left_velocity+right_velocity)/2   
+
 - Compute botradius
     if(left_velocity==right_velocity):
         botradius=0
     else:
         botradius=(230*(left_velocity+right_velocity))/(2*(right_velocity-left_velocity))
-- Then calls move() with the computed parameters as arguments
+
+- Then calls base_control() with the computed parameters as arguments
     self.base_control(int(botspeed),int(botradius))
-\
+\\\
 
 
-base_control(speed, radius)
-- Likely higher-level of motion control
+3.1.2 base_control(speed, radius)
 
-*This is th eactual low-level command that directly feeds commands to the serial port as byte arrays
+- Actual low-level commander
+- It builds a byte packet and writes it to the serial port.
+
+\\\
+    seped: translational motion
+            - If Positive ---> Move forward
+            - If Negative ----> Move backward
+
+\\\
 
 
-kobukistart(start, self)
-- Execute user define start() function conatining the  main logic
 
-SENSOR READING:
+
+3.2 SENSOR READING:
+
 - read_data()
 **Reads raw bytes from Kobuki Serial Connection. Then splits the raw buffer into the internal sensor sections:
 
