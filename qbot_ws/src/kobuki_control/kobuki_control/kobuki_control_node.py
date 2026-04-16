@@ -33,7 +33,7 @@ class KobukiControlNode(Node):
 
         self.get_logger().info('Kobuki control node started. Listening on /cmd_vel')
 
-    def cmd_vel_callback(self, msg: Twist) -> None:
+    def cmd_vel_callback(self, msg):
         linear = msg.linear.x
         angular = msg.angular.z
 
@@ -52,7 +52,7 @@ class KobukiControlNode(Node):
                 f'No Kobuki connected. Computed command -> speed: {speed}, radius: {radius}'
             )
 
-    def twist_to_speed_radius(self, linear: float, angular: float) -> tuple[int, int]:
+    def twist_to_speed_radius(self, linear, angular):
         """
         Convert ROS2 Twist (linear.x, angular.z) into Kobuki base_control(speed, radius).
 
@@ -64,6 +64,7 @@ class KobukiControlNode(Node):
 
         # Scale linear velocity into integer command space.
         # This is an initial assumption and may need tuning with real hardware.
+        # ROS uses m/s as units
         speed = int(linear * 1000)
 
         # Straight motion

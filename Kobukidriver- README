@@ -79,6 +79,33 @@ kobuki_instance.kobukistart(start)
 
 3.2 SENSOR READING:
 
+
+3.2.1 basic_sensor_data(self)
+
+- Creates a python dict called senosr with keys as sensor names
+
+///
+    data = kobuki_instance.basic_sensor_data()        #Create the dict
+
+    data['bumper'], data['wheeldrop'], data['cliff'], data['Left_encoder'], data['Right_encoder'], data['LeftPWM'], data['RightPWM'], data['Button'], data['Charger'], data['Batteryvolt'], data['Overcurrentflag'], data['Overcurrent']
+///
+
+3.2.2 STATUS FLAGS
+
+**The driver provides ready-made boolean bumper staes
+
+///
+    True ---> Condition is happening
+    False --> Condition isn't
+
+    Kobuki.left_bumper, Kobuki.center_bumper, Kobuki.right_bumper       ## left_bumper == True ---> Left_bumber has hit
+
+    Kobuki.left_wheel_dropped, Kobuki.right_wheel_dropped, Kobuki.both_wheel_dropped    ## left_wheel_dropped = True ---> left wheel is not properly on the ground
+                                                                                        ## False --> Normal operation
+                                                                                        
+///
+
+
 - read_data()
 **Reads raw bytes from Kobuki Serial Connection. Then splits the raw buffer into the internal sensor sections:
 
@@ -97,8 +124,7 @@ kobuki_instance.kobukistart(start)
 
 
 
-- basic_sensor_data(self)
-**Creates a python dict called senosr with keys as sensor names
+
 
 
 
