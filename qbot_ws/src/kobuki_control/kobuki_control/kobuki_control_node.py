@@ -14,7 +14,7 @@ class KobukiControlNode(Node):
         self.robot = None
         self.connected = False
 
-        # Try to connect to real Kobuki hardware
+        # Try to connect to Kobuki
         try:
             self.robot = Kobuki()
             self.connected = True
@@ -23,7 +23,7 @@ class KobukiControlNode(Node):
             self.connected = False
             self.get_logger().warning(f'Kobuki not connected: {e}')
 
-        # Subscribe to velocity commands
+        # Subscribe to /cmd_vel topic for velocity commands
         self.subscription = self.create_subscription(
             Twist,
             '/cmd_vel',
@@ -52,40 +52,52 @@ class KobukiControlNode(Node):
                 f'No Kobuki connected. Computed command -> speed: {speed}, radius: {radius}'
             )
 
+
+
     def twist_to_speed_radius(self, linear, angular):
         """
-        Convert ROS2 Twist (linear.x, angular.z) into Kobuki base_control(speed, radius).
+        Convert ROS2 Twist (linear.x, angular.z) into Kobuki base_control(speed, radius)
 
-        Assumption:
-        - speed is sent as an integer proportional to linear velocity
-        - radius is derived from linear/angular relationship
-        - radius = 0 is used for straight motion, matching the driver behavior
+        ROS2 Twist:
+        - linear.x: (m/s)
+        - angular.z: (rad/s)
+
+        kobuki_driver base_control:
+        - speed: (mm/s)
+        - radius: (mm)
+
+        +ve linear.x - Forward
+        -ve linear.x - Backward
+
+        +ve  angular.z - Counter-Clockwise
+        -ve angular.z - Clockwise
+
+        Conversions as per documentation
         """
 
-        # Scale linear velocity into integer command space.
-        # This is an initial assumption and may need tuning with real hardware.
-        # ROS uses m/s as units
         speed = int(linear * 1000)
 
-        # Straight motion
+        # Pure Translation
         if abs(angular) < 1e-6:
             radius = 0
             return speed, radius
 
-        # Pure rotation in place or near-zero linear speed
+        # Pure rotation
         if abs(linear) < 1e-6:
-            # Large difference from straight motion; using a small signed radius proxy.
-            # This may need adjustment once real hardware is available.
-            radius = 1 if angular > 0 else -1
-            return 0, radius
+            b = 230 # Kobuki wheelbase
+            speed = int((angular * b) / 2) 
+            # Specific encoding as per documentaion
+            radius = 1 
+            return speed, radius
 
-        # General curved motion
+        # General (Translation + Rotation)
+        
         radius_m = linear / angular
         radius = int(radius_m * 1000)
 
         return speed, radius
 
-    def stop_robot(self) -> None:
+    def stop_robot(self):
         if self.connected and self.robot is not None:
             try:
                 self.robot.base_control(0, 0)
