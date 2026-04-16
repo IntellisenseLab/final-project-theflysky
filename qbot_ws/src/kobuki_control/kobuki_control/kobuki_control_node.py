@@ -34,6 +34,7 @@ class KobukiControlNode(Node):
         self.get_logger().info('Kobuki control node started. Listening on /cmd_vel')
 
     def cmd_vel_callback(self, msg):
+        # Only parameters needed for kobuki 2D motion
         linear = msg.linear.x
         angular = msg.angular.z
 
@@ -56,44 +57,39 @@ class KobukiControlNode(Node):
 
     def twist_to_speed_radius(self, linear, angular):
         """
-        Convert ROS2 Twist (linear.x, angular.z) into Kobuki base_control(speed, radius)
+        Handle 2 major conflicts between ROS2 (/cmd_vel Twist:msg) and Kobuki API (base_control(speed, radius)):
+            A) Unit conversions
+            B) Special encoded parameters expected by the API for special cases of motions
 
         ROS2 Twist:
         - linear.x: (m/s)
         - angular.z: (rad/s)
 
-        kobuki_driver base_control:
+        Kobuki Driver base_control:
         - speed: (mm/s)
         - radius: (mm)
 
-        +ve linear.x - Forward
-        -ve linear.x - Backward
-
-        +ve  angular.z - Counter-Clockwise
-        -ve angular.z - Clockwise
-
-        Conversions as per documentation
+        AS PER DOCUMENTATION
         """
 
         speed = int(linear * 1000)
 
         # Pure Translation
         if abs(angular) < 1e-6:
+            # Specific encoding as per documentation
             radius = 0
-            return speed, radius
 
         # Pure rotation
-        if abs(linear) < 1e-6:
+        elif abs(linear) < 1e-6:
             b = 230 # Kobuki wheelbase
+            # Specific encoding (otherwise speed = 0)
             speed = int((angular * b) / 2) 
-            # Specific encoding as per documentaion
+            # Specific encoding (Flag for spin_in one place)
             radius = 1 
-            return speed, radius
 
         # General (Translation + Rotation)
-        
-        radius_m = linear / angular
-        radius = int(radius_m * 1000)
+        else:
+            radius = int((linear / angular) * 1000)
 
         return speed, radius
 
