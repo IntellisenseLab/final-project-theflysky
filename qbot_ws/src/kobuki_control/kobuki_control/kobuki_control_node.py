@@ -49,17 +49,17 @@ class KobukiControlNode(Node):
                 self.robot.base_control(speed, radius)
 
                 self.get_logger().info(
-                    f'[ROS CMD] linear: {linear:.3f} m/s, angular: {angular:.3f} rad/s'
+                    f'[ROS] linear: {linear:.3f} m/s, angular: {angular:.3f} rad/s'
                 )
                 self.get_logger().info(
-                    f'[KOBUKI CMD] speed: {speed} mm/s, radius: {radius} mm'
+                    f'[KOBUKI] speed: {speed} mm/s, radius: {radius} mm'
                 )
 
             except Exception as e:
                 self.get_logger().error(f'Failed to send Kobuki command: {e}')
         else:
             self.get_logger().warning(
-                f'No Kobuki connected. Computed command -> speed: {speed}, radius: {radius}'
+                f'No Kobuki connected. Computed [Kobuki] command -> speed: {speed}, radius: {radius}'
             )
 
 
