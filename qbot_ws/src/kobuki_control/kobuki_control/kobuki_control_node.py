@@ -14,6 +14,10 @@ class KobukiControlNode(Node):
         self.robot = None
         self.connected = False
 
+        # Fail-safe command limits for hardware testing
+        self.max_linear = 0.20   # m/s
+        self.max_angular = 1.00  # rad/s
+
         # Try to connect to Kobuki
         try:
             self.robot = Kobuki()
@@ -35,17 +39,22 @@ class KobukiControlNode(Node):
 
     def cmd_vel_callback(self, msg):
         # Only parameters needed for kobuki 2D motion
-        linear = msg.linear.x
-        angular = msg.angular.z
+        linear = max(-self.max_linear, min(self.max_linear, msg.linear.x))
+        angular = max(-self.max_angular, min(self.max_angular, msg.angular.z))
 
         speed, radius = self.twist_to_speed_radius(linear, angular)
 
         if self.connected and self.robot is not None:
             try:
                 self.robot.base_control(speed, radius)
+
                 self.get_logger().info(
-                    f'Sent command -> speed: {speed}, radius: {radius}'
+                    f'[ROS CMD] linear: {linear:.3f} m/s, angular: {angular:.3f} rad/s'
                 )
+                self.get_logger().info(
+                    f'[KOBUKI CMD] speed: {speed} mm/s, radius: {radius} mm'
+                )
+
             except Exception as e:
                 self.get_logger().error(f'Failed to send Kobuki command: {e}')
         else:
