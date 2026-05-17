@@ -1,0 +1,109 @@
+# Default tuning for the gesture + behaviour pipeline on a Raspberry Pi 5
+# driving a Kobuki QBot with a Kinect 360. Every value here can be
+# overridden from the system.launch.py command line - see the launch
+# argument list in qbot_bringup/launch/system.launch.py.
+
+gesture_command_node:
+  ros__parameters:
+    image_topic: /kinect/rgb/image_raw
+    command_topic: /gesture/command
+    tracking_topic: /gesture/tracking
+    debug_image_topic: /gesture/debug_image
+
+    # Pi 5 throughput: the Kinect produces RGB at ~30 fps but MediaPipe
+    # gesture inference is the bottleneck. 12 fps keeps the latency under
+    # one frame and leaves CPU for the face tracker.
+    max_fps: 12.0
+
+    # Lowering min_confidence helps with partial-curl frames; the
+    # majority vote filter compensates for the extra noise.
+    min_confidence: 0.45
+    history_size: 7
+    history_votes: 4
+
+    # Mirror commands when the camera image is flipped relative to the user.
+    mirror_horizontal_commands: false
+
+    # Frame preprocessing for accuracy under poor lighting.
+    downscale_width: 480
+    enable_clahe: true
+    min_frame_luma: 22.0
+    max_frame_luma: 245.0
+
+    # Beckon (come-closer) — open <-> closed oscillations of the hand.
+    beckon_oscillations_required: 2
+    beckon_window_sec: 4.5
+
+    # Open-palm tail-wag signature.
+    palm_wave_reversals: 3
+
+    # Open-palm hold => STOP. Long enough that a wave does not stop the
+    # robot prematurely, short enough to feel responsive.
+    stop_hold_sec: 0.45
+
+    # Inter-command cooldown.
+    command_cooldown_sec: 1.8
+
+    publish_debug_image: false
+
+face_tracker_node:
+  ros__parameters:
+    image_topic: /kinect/rgb/image_raw
+    target_topic: /vision/target
+    max_fps: 8.0
+    min_confidence: 0.5
+    stable_frames_required: 2
+    hold_last_detection_sec: 0.6
+    ema_alpha: 0.5
+    downscale_width: 480
+    force_haar: false
+
+pet_behavior_node:
+  ros__parameters:
+    gesture_command_topic: /gesture/command
+    gesture_tracking_topic: /gesture/tracking
+    vision_target_topic: /vision/target
+    depth_image_topic: /kinect/depth/image_raw
+    cmd_vel_topic: /cmd_vel
+    sound_topic: /commands/sound
+
+    publish_idle_zero: true
+    timer_hz: 20.0
+
+    # Come-closer.
+    come_closer_distance_m: 0.45            # Fallback distance if depth is unavailable.
+    come_closer_target_m: 0.7               # Stop when person is this close (metres).
+    come_closer_max_time_sec: 6.0           # Hard cap on the forward drive.
+    use_depth_for_come_closer: true
+
+    # Safety: stop forward drive whenever depth says something is in the way.
+    obstacle_stop_m: 0.32
+    use_depth_for_safety: true
+
+    # Foot-step move.
+    foot_distance_m: 0.3048
+    drive_speed_mps: 0.13
+    turn_speed_radps: 0.65
+
+    # Tail wag oscillation.
+    tail_wag_duration_sec: 3.2
+    tail_wag_speed_radps: 1.05
+    tail_wag_half_period_sec: 0.26
+
+    # Re-centre alignment after each non-stop command.
+    align_after_actions: true
+    align_timeout_sec: 3.0
+    align_deadband: 0.06
+    align_hold_sec: 0.25
+    align_kp: 1.2
+    align_max_speed_radps: 0.38
+    align_search_speed_radps: 0.22
+    align_search_max_sec: 1.6
+    tracking_timeout_sec: 1.0
+    target_turn_sign: -1.0                  # Flip to 1.0 if alignment turns away.
+
+    # Idle cuteness — small wag every few seconds while watching the user.
+    enable_idle_wag: true
+    idle_wag_interval_sec: 14.0
+    idle_wag_duration_sec: 0.5
+    idle_wag_speed_radps: 0.6

@@ -14,7 +14,9 @@ sudo apt install -y \
   ros-jazzy-sensor-msgs \
   ros-jazzy-nav-msgs \
   ros-jazzy-twist-mux \
-  ros-jazzy-teleop-twist-keyboard
+  ros-jazzy-teleop-twist-keyboard \
+  ros-jazzy-kobuki-ros-interfaces \
+  ros-jazzy-kobuki-velocity-smoother
 
 sudo apt install -y \
   v4l-utils \

@@ -5,8 +5,7 @@
 **/install/
 **/log/
 
-# Test and lint artifacts
-**/test/
+# Test and lint artifacts (caches and reports, not test sources)
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
