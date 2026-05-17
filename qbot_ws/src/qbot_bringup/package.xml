@@ -2,10 +2,17 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>qbot_bringup</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <version>0.1.0</version>
+  <description>System launch and shared configuration for the QBot gesture pipeline.</description>
   <maintainer email="nadeeshajayamanne@protonmail.com">nadeesha</maintainer>
-  <license>TODO: License declaration</license>
+  <license>Apache-2.0</license>
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>kinect_camera</exec_depend>
+  <exec_depend>gesture_node</exec_depend>
+  <exec_depend>vision_node</exec_depend>
+  <exec_depend>behavior_node</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

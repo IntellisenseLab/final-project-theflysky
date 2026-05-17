@@ -21,13 +21,21 @@ setup(
             os.path.join('share', package_name, 'launch'),
             glob('launch/*.launch.py')
         ),
+        (
+            os.path.join('share', package_name, 'config'),
+            glob('config/*.yaml')
+        ),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='nadeesha',
     maintainer_email='nadeeshajayamanne@protonmail.com',
-    description='QBot bringup package',
-    license='TODO: License declaration',
+    description=(
+        'Launches the full QBot gesture-to-behaviour pipeline (Kinect '
+        'driver, gesture node, face tracker, behaviour node) with shared '
+        'tuning loaded from config/qbot_params.yaml.'
+    ),
+    license='Apache-2.0',
     extras_require={
         'test': [
             'pytest',

@@ -15,8 +15,12 @@ setup(
     zip_safe=True,
     maintainer='nadeesha',
     maintainer_email='nadeeshajayamanne@protonmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description=(
+        'MediaPipe-based face tracker that publishes /vision/target. Used '
+        'by the behaviour node as a fallback re-centring signal when no '
+        'hand is visible.'
+    ),
+    license='Apache-2.0',
     extras_require={
         'test': [
             'pytest',
@@ -24,6 +28,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'face_tracker_node = vision_node.face_tracker_node:main',
         ],
     },
 )

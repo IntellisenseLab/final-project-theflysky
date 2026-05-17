@@ -12,6 +12,16 @@ find_package(sensor_msgs REQUIRED)
 set(LIBFREENECT_ROOT "$ENV{LIBFREENECT_ROOT}" CACHE PATH
   "Path to a libfreenect install prefix or source checkout")
 
+if(LIBFREENECT_INCLUDE_DIR AND NOT EXISTS "${LIBFREENECT_INCLUDE_DIR}/libfreenect.h")
+  message(STATUS "Clearing stale LIBFREENECT_INCLUDE_DIR=${LIBFREENECT_INCLUDE_DIR}")
+  unset(LIBFREENECT_INCLUDE_DIR CACHE)
+endif()
+
+if(LIBFREENECT_LIBRARY AND NOT EXISTS "${LIBFREENECT_LIBRARY}")
+  message(STATUS "Clearing stale LIBFREENECT_LIBRARY=${LIBFREENECT_LIBRARY}")
+  unset(LIBFREENECT_LIBRARY CACHE)
+endif()
+
 set(_libfreenect_hints)
 if(LIBFREENECT_ROOT)
   list(APPEND _libfreenect_hints "${LIBFREENECT_ROOT}")

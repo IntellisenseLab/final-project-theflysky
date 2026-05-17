@@ -27,12 +27,15 @@ The software is organized as a modular ROS 2 workspace with separate nodes for p
 - Runs hand landmark/gesture detection using MediaPipe and OpenCV
 - Classifies supported gesture commands
 - Publishes gesture outputs
+- Detects stream gestures such as beckon curls, palm waves, and index-finger circles
 
 ### Behavior Node
 
 - Subscribes to vision and gesture topics
 - Resolves behavior priorities and robot actions
 - Publishes velocity commands on `/cmd_vel`
+- Executes Kobuki/QBot pet-like behaviors and sound cues
+- Re-centers the robot toward the latest hand or face target after each action
 
 ### QBot Controller
 
@@ -67,8 +70,8 @@ qbot_ws/
 1. Clone the repository and enter the workspace:
 
 ```bash
-git clone https://github.com/IntellisenseLab/final-project-flysky.git
-cd final-project-flysky
+git clone https://github.com/IntellisenseLab/final-project-theflysky.git
+cd final-project-theflysky
 ```
 
 2. Install system and ROS dependencies (Ubuntu/ROS Jazzy):
@@ -99,6 +102,21 @@ source install/setup.bash
 ros2 launch qbot_bringup system.launch.py
 ```
 
+For a real Kobuki/QBot base, the launch file defaults to the Kobuki-style
+velocity topic `/commands/velocity`. If your driver or mux listens on `/cmd_vel`,
+run:
+
+```bash
+ros2 launch qbot_bringup system.launch.py cmd_vel_topic:=/cmd_vel
+```
+
+See `KOBUKI_QBOT_GESTURE_CONTROL.md` for the full gesture table, Kobuki sound
+topic, launch arguments, and tuning notes.
+
+The launch file also points ROS 2's system Python at the repo virtual
+environment so MediaPipe can be imported from `.venv`. Override
+`venv_site_packages:=...` if the project is moved to a different path.
+
 ### Running Python scripts in this repo
 
 Use the project virtual environment so Python dependencies stay isolated:
@@ -111,18 +129,40 @@ deactivate
 
 ## Features
 
-- Real-time face detection
-- Hand gesture recognition
-- Behavior-based autonomous response
-- Modular node-level architecture for maintenance and extension
+- Real-time MediaPipe face tracking with Haar fallback
+- MediaPipe hand gesture recognition with CLAHE preprocessing, landmark
+  EMA + jump rejection, majority-vote label smoothing and per-frame
+  brightness quality gating
+- Continuous-signal beckon detector (does not depend on MediaPipe's
+  discrete OPEN_PALM/CLOSED_FIST flip-flopping)
+- Depth-aware come-closer that stops when the user is within
+  `come_closer_target_m` and aborts forward motion if anything is
+  within `obstacle_stop_m`
+- Distinctive Kobuki sound sequences for every gesture command plus an
+  opt-in idle wag so the robot looks alive between commands
+- Stream-based pet gestures:
+  - beckon/curl hand 2 times: robot comes closer
+  - open palm held: robot stops
+  - index finger circle: robot rotates once
+  - index finger left/right: robot moves one foot in that direction
+  - open palm wave: robot oscillates left and right like a tail wag
+  - every non-stop command ends with visual re-centering toward the
+    user, biased by the last known hand or face offset
 
 ## Testing Workflow
 
-1. Verify camera device and image feed
-2. Run and validate the vision node
-3. Run and validate the gesture node
+1. Verify camera device and image feed (`ros2 topic hz /kinect/rgb/image_raw`)
+2. Run and validate the vision node (`ros2 topic echo /vision/target`)
+3. Run and validate the gesture node (`ros2 topic echo /gesture/tracking`)
 4. Confirm motion control with teleoperation and behavior outputs
 5. Launch the full system and verify end-to-end behavior
+
+Run the offline decoder unit tests (no ROS or camera required):
+
+```bash
+PYTHONPATH=qbot_ws/src/gesture_node:.venv/lib/python3.12/site-packages \
+  python3 -m pytest qbot_ws/src/gesture_node/test/test_decoder.py -q
+```
 
 ## Notes
 

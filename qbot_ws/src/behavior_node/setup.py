@@ -15,8 +15,12 @@ setup(
     zip_safe=True,
     maintainer='nadeesha',
     maintainer_email='nadeeshajayamanne@protonmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description=(
+        'Behaviour planner for the QBot. Turns gesture commands into '
+        'depth-aware Twist segments and Kobuki sound sequences, then '
+        're-centres on the user after each action.'
+    ),
+    license='Apache-2.0',
     extras_require={
         'test': [
             'pytest',
@@ -24,6 +28,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'pet_behavior_node = behavior_node.pet_behavior_node:main',
         ],
     },
 )

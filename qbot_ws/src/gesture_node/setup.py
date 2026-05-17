@@ -15,8 +15,13 @@ setup(
     zip_safe=True,
     maintainer='nadeesha',
     maintainer_email='nadeeshajayamanne@protonmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description=(
+        'Stream-based gesture recognition for the QBot. Publishes '
+        '/gesture/tracking continuously and /gesture/command when '
+        'temporal signatures (beckon, stop, circle, point, wave) '
+        'are confirmed.'
+    ),
+    license='Apache-2.0',
     extras_require={
         'test': [
             'pytest',
@@ -24,6 +29,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'gesture_command_node = gesture_node.gesture_command_node:main',
         ],
     },
 )
