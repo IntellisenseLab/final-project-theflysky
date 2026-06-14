@@ -1,0 +1,10 @@
+# Keep host build artifacts (x86) and bulky dirs out of the build context.
+.git
+.venv
+build
+qbot_ws/build
+qbot_ws/install
+qbot_ws/log
+**/__pycache__
+*.pyc
+.vscode

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Fast DDS shared-memory transport profile for streaming the Kinect's raw
+  640x480 RGB images (~900 KB/frame) between ROS 2 nodes on ONE machine.
+
+  Why this is needed:
+    The default DDS transport sends large images over UDP loopback, which on a
+    stock kernel (net.core.rmem_max ~212 KB) is far too small to hold a 900 KB
+    frame's fragments, so most frames are dropped and the feed collapses to
+    ~6 fps. This profile forces a large shared-memory segment instead, which
+    has no such limit and delivers a stable 30 fps.
+
+  How to use (set for EVERY node that publishes/subscribes the image topic):
+    export FASTRTPS_DEFAULT_PROFILES_FILE=$PWD/fastdds_shm_local.xml
+
+  Scope / caveat:
+    This disables the network transport (useBuiltinTransports=false), so it is
+    for nodes running on the SAME host (the laptop test, or the all-on-Pi
+    robot). If you ever split nodes across machines, use the kernel-buffer fix
+    instead: sudo sysctl -w net.core.rmem_max=2147483647
+-->
+<dds xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+  <profiles>
+    <transport_descriptors>
+      <transport_descriptor>
+        <transport_id>shm_big</transport_id>
+        <type>SHM</type>
+        <segment_size>134217728</segment_size>
+      </transport_descriptor>
+    </transport_descriptors>
+    <participant profile_name="big_shm" is_default_profile="true">
+      <rtps>
+        <userTransports>
+          <transport_id>shm_big</transport_id>
+        </userTransports>
+        <useBuiltinTransports>false</useBuiltinTransports>
+      </rtps>
+    </participant>
+  </profiles>
+</dds>

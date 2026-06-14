@@ -46,7 +46,9 @@ class KobukiControlNode(Node):
 
         if self.connected and self.robot is not None:
             try:
-                self.robot.base_control(speed, radius)
+                # base_control is defined without `self` in kobukidriver, so it
+                # must be called on the class, not the instance.
+                Kobuki.base_control(speed, radius)
 
                 self.get_logger().info(
                     f'[ROS] linear: {linear:.3f} m/s, angular: {angular:.3f} rad/s'
@@ -105,7 +107,7 @@ class KobukiControlNode(Node):
     def stop_robot(self):
         if self.connected and self.robot is not None:
             try:
-                self.robot.base_control(0, 0)
+                Kobuki.base_control(0, 0)
                 self.get_logger().info('Stop command sent to Kobuki.')
             except Exception as e:
                 self.get_logger().error(f'Failed to stop Kobuki: {e}')

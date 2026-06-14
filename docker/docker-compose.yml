@@ -1,0 +1,30 @@
+# Single all-in-one QBot container.
+#
+#   docker compose -f docker/docker-compose.yml build   # one-time, on the Pi
+#   docker compose -f docker/docker-compose.yml up       # run the pipeline
+#
+# Notes:
+# * network_mode: host    -> ROS 2 DDS discovery works without port wiring.
+# * privileged + /dev     -> Kinect (USB re-enumeration) and the Kobuki
+#                            USB-serial port (/dev/ttyUSB*) are visible.
+# * For a GUI tool (rqt_image_view) uncomment the X11 lines and run
+#   `xhost +local:root` on the Pi's desktop session first.
+
+services:
+  qbot:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: qbot:latest
+    container_name: qbot
+    privileged: true
+    network_mode: host
+    volumes:
+      - /dev:/dev
+      # - /tmp/.X11-unix:/tmp/.X11-unix   # uncomment for GUI tools
+    environment:
+      - ROS_DOMAIN_ID=0
+      # - DISPLAY=${DISPLAY}              # uncomment for GUI tools
+    stdin_open: true
+    tty: true
+    restart: "no"
