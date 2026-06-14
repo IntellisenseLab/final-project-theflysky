@@ -4,28 +4,42 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 
-from kobukidriver import Kobuki
+import serial
+from serial.tools import list_ports
+
+# The Kobuki ships with an FTDI USB-serial adapter (USB id 0403:6001) whose
+# descriptor contains "Kobuki". We detect the port ourselves by matching on
+# either, so the node no longer depends on the (Windows-only, buggy) port
+# auto-detection in the third-party kobukidriver package.
+KOBUKI_USB_ID = '0403:6001'
+KOBUKI_DESC_HINT = 'kobuki'
 
 
 class KobukiControlNode(Node):
     def __init__(self):
         super().__init__('kobuki_control_node')
 
-        self.robot = None
+        self.serial = None
         self.connected = False
 
         # Fail-safe command limits for hardware testing
         self.max_linear = 0.20   # m/s
         self.max_angular = 1.00  # rad/s
 
-        # Try to connect to Kobuki
-        try:
-            self.robot = Kobuki()
-            self.connected = True
-            self.get_logger().info('Kobuki connected successfully.')
-        except Exception as e:
-            self.connected = False
-            self.get_logger().warning(f'Kobuki not connected: {e}')
+        # Find and open the Kobuki serial port ourselves.
+        port = self._find_kobuki_port()
+        if port is not None:
+            try:
+                self.serial = serial.Serial(port=port, baudrate=115200, timeout=0.1)
+                self.connected = True
+                self.get_logger().info(f'Kobuki connected on {port}.')
+            except Exception as e:
+                self.get_logger().warning(f'Found Kobuki at {port} but could not open it: {e}')
+        else:
+            self.get_logger().warning(
+                'No Kobuki serial port found (looked for USB '
+                f'{KOBUKI_USB_ID} or "{KOBUKI_DESC_HINT}" in the port description).'
+            )
 
         # Subscribe to /cmd_vel topic for velocity commands
         self.subscription = self.create_subscription(
@@ -44,11 +58,9 @@ class KobukiControlNode(Node):
 
         speed, radius = self.twist_to_speed_radius(linear, angular)
 
-        if self.connected and self.robot is not None:
+        if self.connected and self.serial is not None:
             try:
-                # base_control is defined without `self` in kobukidriver, so it
-                # must be called on the class, not the instance.
-                Kobuki.base_control(speed, radius)
+                self._send_base_control(speed, radius)
 
                 self.get_logger().info(
                     f'[ROS] linear: {linear:.3f} m/s, angular: {angular:.3f} rad/s'
@@ -104,10 +116,36 @@ class KobukiControlNode(Node):
 
         return speed, radius
 
+    @staticmethod
+    def _find_kobuki_port():
+        """Return the /dev path of the Kobuki's USB-serial adapter, or None."""
+        for p in list_ports.comports():
+            hwid = (p.hwid or '').upper()
+            desc = (p.description or '').lower()
+            if KOBUKI_USB_ID.upper() in hwid or KOBUKI_DESC_HINT in desc:
+                return p.device
+        return None
+
+    def _send_base_control(self, speed, radius):
+        """Build and write a Kobuki Base Control serial packet.
+
+        Wire format: header 0xAA 0x55, length 0x06, then the sub-payload
+        [cmd=0x01, len=0x04, speed(int16 LE), radius(int16 LE)], followed by a
+        one-byte XOR checksum over the length byte and the whole sub-payload.
+        """
+        packet = bytearray([0xAA, 0x55, 0x06, 0x01, 0x04])
+        packet += int(speed).to_bytes(2, byteorder='little', signed=True)
+        packet += int(radius).to_bytes(2, byteorder='little', signed=True)
+        checksum = 0
+        for byte in packet[2:]:
+            checksum ^= byte
+        packet.append(checksum)
+        self.serial.write(packet)
+
     def stop_robot(self):
-        if self.connected and self.robot is not None:
+        if self.connected and self.serial is not None:
             try:
-                Kobuki.base_control(0, 0)
+                self._send_base_control(0, 0)
                 self.get_logger().info('Stop command sent to Kobuki.')
             except Exception as e:
                 self.get_logger().error(f'Failed to stop Kobuki: {e}')

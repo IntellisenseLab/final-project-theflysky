@@ -44,6 +44,11 @@ PROFILES: dict = {
         (0.00, _BUTTON),
         (0.12, _OFF),
     ],
+    # Descending notes ending in OFF — "backing away".
+    "MOVE_BACK": [
+        (0.00, _CLEAN_END),
+        (0.20, _OFF),
+    ],
     # Three ascending notes for the full-circle spin.
     "ROTATE_ONCE": [
         (0.00, _ON),

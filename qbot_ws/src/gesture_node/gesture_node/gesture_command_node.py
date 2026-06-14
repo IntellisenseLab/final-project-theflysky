@@ -174,6 +174,7 @@ class TemporalCommandDecoder:
         point_hold_sec: float = 0.55,
         stop_hold_sec: float = 0.45,
         stop_motion_tolerance: float = 0.04,
+        back_hold_sec: float = 0.55,
         command_cooldown_sec: float = 1.8,
     ) -> None:
         self._beckon = BeckonOscillationDetector(
@@ -188,6 +189,7 @@ class TemporalCommandDecoder:
         self._point_hold = float(point_hold_sec)
         self._stop_hold = float(stop_hold_sec)
         self._stop_motion_tolerance = float(stop_motion_tolerance)
+        self._back_hold = float(back_hold_sec)
         self._cooldown = float(command_cooldown_sec)
 
         self._palm_track: collections.deque = collections.deque()
@@ -195,6 +197,7 @@ class TemporalCommandDecoder:
         self._open_palm_since: float | None = None
         self._point_direction: str | None = None
         self._point_direction_since: float | None = None
+        self._back_since: float | None = None
         self._last_emit: dict = collections.defaultdict(lambda: -math.inf)
 
     def reset(self) -> None:
@@ -204,6 +207,7 @@ class TemporalCommandDecoder:
         self._open_palm_since = None
         self._point_direction = None
         self._point_direction_since = None
+        self._back_since = None
 
     def update(self, obs):
         if not obs["hand_visible"]:
@@ -219,6 +223,7 @@ class TemporalCommandDecoder:
             or self._detect_beckon(obs, now)
             or self._detect_index_circle(obs, now)
             or self._detect_point_left_right(obs, now)
+            or self._detect_back_away(obs, now)
             or self._detect_stop(obs, now)
         )
 
@@ -367,6 +372,18 @@ class TemporalCommandDecoder:
             },
         )
 
+    def _detect_back_away(self, obs, now):
+        if obs["gesture"] != "THUMBS_DOWN":
+            self._back_since = None
+            return None
+        if self._back_since is None:
+            self._back_since = now
+            return None
+        if now - self._back_since < self._back_hold:
+            return None
+        self._back_since = math.inf  # hold; do not re-fire until the hand changes
+        return self._emit("MOVE_BACK", obs, "thumbs-down held", cooldown=2.2)
+
     def _detect_point_left_right(self, obs, now):
         if obs["gesture"] != "POINTING":
             return None
@@ -419,6 +436,7 @@ class GestureCommandNode(Node):
         self.declare_parameter("beckon_window_sec", 4.5)
         self.declare_parameter("palm_wave_reversals", 3)
         self.declare_parameter("stop_hold_sec", 0.45)
+        self.declare_parameter("back_hold_sec", 0.55)
         self.declare_parameter("command_cooldown_sec", 1.8)
 
         image_topic = self.get_parameter("image_topic").value
@@ -452,6 +470,7 @@ class GestureCommandNode(Node):
             beckon_window_sec=float(self.get_parameter("beckon_window_sec").value),
             palm_wave_reversals=int(self.get_parameter("palm_wave_reversals").value),
             stop_hold_sec=float(self.get_parameter("stop_hold_sec").value),
+            back_hold_sec=float(self.get_parameter("back_hold_sec").value),
             command_cooldown_sec=float(self.get_parameter("command_cooldown_sec").value),
         )
 

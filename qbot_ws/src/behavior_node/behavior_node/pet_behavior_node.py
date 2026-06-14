@@ -350,6 +350,12 @@ class PetBehaviorNode(Node):
                 {"kind": "pause", "duration": 0.12},
             ]
 
+        if name == "MOVE_BACK":
+            return [
+                self._drive_segment(-foot_distance, drive_speed),
+                {"kind": "pause", "duration": 0.12},
+            ]
+
         if name == "ROTATE_ONCE":
             return [
                 self._rotate_segment(2.0 * math.pi, turn_speed),

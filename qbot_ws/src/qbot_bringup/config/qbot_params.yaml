@@ -41,6 +41,9 @@ gesture_command_node:
     # robot prematurely, short enough to feel responsive.
     stop_hold_sec: 0.45
 
+    # Thumbs-down hold => MOVE_BACK (robot reverses one foot).
+    back_hold_sec: 0.55
+
     # Inter-command cooldown.
     command_cooldown_sec: 1.8
 
