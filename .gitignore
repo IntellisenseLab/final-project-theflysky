@@ -5,6 +5,14 @@
 **/install/
 **/log/
 
+# Python virtual environment (rebuild natively per-machine; never commit -
+# committing it shipped x86_64 wheels that broke the arm64 Pi)
+.venv/
+venv/
+
+# Python bytecode caches
+__pycache__/
+
 # Test and lint artifacts (caches and reports, not test sources)
 .pytest_cache/
 .ruff_cache/
