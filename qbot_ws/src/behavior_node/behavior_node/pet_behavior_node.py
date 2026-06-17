@@ -102,7 +102,7 @@ class PetBehaviorNode(Node):
         self.declare_parameter("target_turn_sign", -1.0)
 
         self.declare_parameter("enable_idle_wag", True)
-        self.declare_parameter("idle_wag_interval_sec", 14.0)
+        self.declare_parameter("idle_wag_interval_sec", 10.0)
         self.declare_parameter("idle_wag_duration_sec", 0.5)
         self.declare_parameter("idle_wag_speed_radps", 0.6)
 

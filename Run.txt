@@ -9,3 +9,29 @@ python [].py
 When done
 deactivate
 
+For setting up Rpi
+# From your laptop, copy the script to the Pi
+scp setup_rpi.sh ubuntu@<pi-ip-address>:~/
+
+# SSH in and run it
+ssh ubuntu@<pi-ip-address>
+sudo bash ~/setup_rpi.sh qbot       # 'qbot' becomes the hostname
+
+
+SSH into the Pi using the IP once:
+
+ssh flysky@172.20.10.2
+
+Then install mDNS support:
+
+sudo apt update
+sudo apt install avahi-daemon
+
+Enable and start it:
+
+sudo systemctl enable avahi-daemon
+sudo systemctl start avahi-daemon
+
+Check hostname:
+
+hostname
