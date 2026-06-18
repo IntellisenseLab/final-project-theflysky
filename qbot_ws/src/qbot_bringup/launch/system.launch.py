@@ -104,7 +104,7 @@ def generate_launch_description():
             "venv_site_packages",
             default_value=EnvironmentVariable(
                 "QBOT_VENV_SITE_PACKAGES",
-                default_value="/home/nadeesha/final-project-theflysky/.venv/lib/python3.12/site-packages",
+                default_value="",
             ),
         ),
         DeclareLaunchArgument("start_kinect", default_value="true"),
@@ -116,7 +116,7 @@ def generate_launch_description():
             "gesture_model_path",
             default_value=EnvironmentVariable(
                 "QBOT_GESTURE_MODEL",
-                default_value="/home/nadeesha/final-project-theflysky/models/gesture_recognizer.task",
+                default_value="",
             ),
         ),
         DeclareLaunchArgument("gesture_max_fps", default_value="12.0"),

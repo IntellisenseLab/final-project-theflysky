@@ -21,6 +21,7 @@ source "$REPO/qbot_ws/install/setup.bash"
 export FASTRTPS_DEFAULT_PROFILES_FILE="$REPO/fastdds_shm_local.xml"
 export LIBFREENECT_FIRMWARE_PATH="$HOME/.libfreenect"
 export QBOT_GESTURE_MODEL="$REPO/models/gesture_recognizer.task"
+export QBOT_VENV_SITE_PACKAGES="$REPO/.venv/lib/python3.12/site-packages"
 export PYTHONPATH="$REPO/.venv/lib/python3.12/site-packages:$PYTHONPATH"
 
 pids=()

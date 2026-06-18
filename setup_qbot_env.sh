@@ -9,8 +9,6 @@
 # Run as your normal user (NOT root) from the repo root:
 #     ./setup_qbot_env.sh
 #
-# (Optional, first: ./setup_rpi.sh qbot  -> sets hostname + mDNS so the Pi is
-#  reachable as qbot.local. That script is separate and unrelated to this one.)
 #
 # To also install the optional owner-recognition stack (dlib + face_recognition,
 # slow source compile on the Pi), run:
@@ -91,22 +89,11 @@ PIP="$REPO/.venv/bin/pip"
 "$PIP" install --upgrade pip wheel
 
 # Core pipeline deps from requirements-venv.txt, excluding the heavy
-# recognition stack and mediapipe (handled separately so a missing aarch64
-# mediapipe wheel cannot abort the whole install).
-grep -ivE 'dlib|face[-_]recognition|imutils|mediapipe' "$REPO/requirements-venv.txt" \
+# recognition stack (dlib/face_recognition/imutils handled separately).
+grep -ivE 'dlib|face[-_]recognition|imutils' "$REPO/requirements-venv.txt" \
   | grep -vE '^\s*(#|$)' > /tmp/qbot-req-core.txt
 "$PIP" install -r /tmp/qbot-req-core.txt
 "$PIP" install pyserial
-
-# mediapipe: best effort. If no arm64 wheel exists, the face tracker falls back
-# to the OpenCV Haar cascade automatically.
-MP_VER="$(grep -iE '^mediapipe' "$REPO/requirements-venv.txt" | head -1 || true)"
-if "$PIP" install "${MP_VER:-mediapipe}" ; then
-  echo "    mediapipe installed."
-else
-  echo "    WARNING: mediapipe unavailable for arm64; face tracker will use the"
-  echo "    OpenCV Haar fallback (set force_haar handled in code)."
-fi
 
 if [ "$WITH_FACE_RECOGNITION" = "1" ]; then
   echo "==> [4b] Optional owner-recognition stack (dlib source compile, slow)"
@@ -118,8 +105,11 @@ fi
 # 5. Build the ROS workspace.
 # ---------------------------------------------------------------------------
 echo "==> [5/5] colcon build qbot_ws"
+# ROS setup scripts reference unset vars; relax nounset just for the source.
+set +u
 # shellcheck disable=SC1091
 source /opt/ros/jazzy/setup.bash
+set -u
 cd "$REPO/qbot_ws"
 colcon build --symlink-install
 
